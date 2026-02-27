@@ -11,6 +11,22 @@ export interface GeminiMatch {
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
+let catalogPromptCache: string | null = null;
+let catalogMapCache: Map<string, CatalogMinifig> | null = null;
+
+function getCatalogPrompt(): string {
+  if (catalogPromptCache) return catalogPromptCache;
+  catalogPromptCache = getCatalog().map(m => `${m.id}|${m.name}`).join('\n');
+  return catalogPromptCache;
+}
+
+function getCatalogMap(): Map<string, CatalogMinifig> {
+  if (catalogMapCache) return catalogMapCache;
+  catalogMapCache = new Map();
+  for (const m of getCatalog()) catalogMapCache.set(m.id, m);
+  return catalogMapCache;
+}
+
 function resizeImage(file: File, maxDim = 512): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -38,7 +54,31 @@ function resizeImage(file: File, maxDim = 512): Promise<string> {
   });
 }
 
-async function groqRequest(apiKey: string, messages: Array<Record<string, unknown>>, maxTokens = 256) {
+export async function identifyMinifig(file: File, apiKey: string): Promise<GeminiMatch[]> {
+  const dataUrl = await resizeImage(file);
+  const catalogList = getCatalogPrompt();
+  const catalogMap = getCatalogMap();
+
+  const prompt = `You are a LEGO Star Wars minifigure expert. Look at this photo and identify which minifigure it is.
+
+Study carefully:
+- Color scheme (skin color, outfit colors)
+- Torso print/design
+- Head/helmet type
+- Leg printing
+- Any accessories
+
+Here is the complete catalog of LEGO Star Wars minifigures (id|name):
+
+${catalogList}
+
+Pick the 3 best matches from the catalog above. Reply with ONLY this JSON:
+{"matches":[
+{"id":"exact-id","name":"exact-name","confidence":0.95,"reasoning":"why"},
+{"id":"exact-id","name":"exact-name","confidence":0.7,"reasoning":"why"},
+{"id":"exact-id","name":"exact-name","confidence":0.4,"reasoning":"why"}
+]}`;
+
   const response = await fetch(GROQ_URL, {
     method: 'POST',
     headers: {
@@ -47,9 +87,17 @@ async function groqRequest(apiKey: string, messages: Array<Record<string, unknow
     },
     body: JSON.stringify({
       model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      messages,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: dataUrl } },
+            { type: 'text', text: prompt },
+          ],
+        },
+      ],
       temperature: 0.1,
-      max_tokens: maxTokens,
+      max_tokens: 512,
     }),
   });
 
@@ -63,147 +111,29 @@ async function groqRequest(apiKey: string, messages: Array<Record<string, unknow
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content ?? '';
-}
+  const text = data.choices?.[0]?.message?.content ?? '';
 
-export async function identifyMinifig(file: File, apiKey: string): Promise<GeminiMatch[]> {
-  const dataUrl = await resizeImage(file);
-  const catalog = getCatalog();
-
-  // === PASS 1: Identify the character and faction ===
-  const pass1Text = await groqRequest(apiKey, [
-    {
-      role: 'user',
-      content: [
-        { type: 'image_url', image_url: { url: dataUrl } },
-        {
-          type: 'text',
-          text: `Identify this LEGO Star Wars minifigure. Reply with ONLY a JSON object:
-{"character": "specific character name", "faction": "one of: Clone, Rebel, Empire, Jedi, Sith, Droid, Bounty Hunter, Resistance, First Order, Republic, Mandalorian, Civilian, Other", "era": "prequel/original/sequel", "details": "torso print, helmet type, colors, accessories"}`,
-        },
-      ],
-    },
-  ]);
-
-  // Parse pass 1 response
-  const cleaned1 = pass1Text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  let character = '';
-  let faction = '';
-  let details = '';
-  try {
-    const p = JSON.parse(cleaned1);
-    character = p.character || '';
-    faction = p.faction || '';
-    details = p.details || '';
-  } catch {
-    // Use raw text as character description
-    character = cleaned1;
-  }
-
-  // === Filter catalog by faction ===
-  const factionMap: Record<string, string[]> = {
-    'clone': ['Clone', 'Republic'],
-    'republic': ['Clone', 'Republic'],
-    'rebel': ['Rebel'],
-    'empire': ['Empire', 'Imperial'],
-    'imperial': ['Empire', 'Imperial'],
-    'jedi': ['Jedi', 'Republic'],
-    'sith': ['Sith'],
-    'droid': ['Droid'],
-    'bounty hunter': ['Bounty Hunter', 'Mandalorian'],
-    'mandalorian': ['Mandalorian', 'Bounty Hunter'],
-    'resistance': ['Resistance', 'Rebel'],
-    'first order': ['First Order', 'Empire'],
-    'civilian': ['Civilian', 'Other'],
-  };
-
-  const factionKey = faction.toLowerCase();
-  const matchFactions = factionMap[factionKey] || [faction];
-
-  // Get faction-filtered candidates + some extras from keyword matching
-  let candidates = catalog.filter(m =>
-    matchFactions.some(f => m.faction.toLowerCase().includes(f.toLowerCase()))
-  );
-
-  // If faction filter gave too few results, broaden the search
-  if (candidates.length < 20) {
-    // Add keyword matches from character name
-    const charWords = character.toLowerCase().split(/[\s,\-()]+/).filter(w => w.length > 2);
-    const extra = catalog.filter(m =>
-      !candidates.includes(m) &&
-      charWords.some(w => m.name.toLowerCase().includes(w))
-    );
-    candidates = [...candidates, ...extra];
-  }
-
-  // Cap at 300 to stay well within token limits
-  if (candidates.length > 300) {
-    candidates = candidates.slice(0, 300);
-  }
-
-  // If still no candidates, use full catalog subset by name matching
-  if (candidates.length === 0) {
-    const charLower = character.toLowerCase();
-    candidates = catalog
-      .filter(m => {
-        const name = m.name.toLowerCase();
-        return charLower.split(/\s+/).some(w => w.length > 2 && name.includes(w));
-      })
-      .slice(0, 200);
-  }
-
-  // Fallback: just use the whole catalog (shouldn't happen)
-  if (candidates.length === 0) {
-    candidates = catalog.slice(0, 200);
-  }
-
-  // === PASS 2: Exact match against filtered candidates ===
-  const candidateList = candidates.map(m => `${m.id}|${m.name}`).join('\n');
-
-  const pass2Text = await groqRequest(apiKey, [
-    {
-      role: 'user',
-      content: `From the image I identified a LEGO Star Wars minifigure as: "${character}". Faction: ${faction}. Details: ${details}.
-
-Pick the top 3 best matches from this list (format: id|name):
-
-${candidateList}
-
-Reply with ONLY valid JSON:
-{"matches": [
-  {"id": "exact-id-from-list", "name": "exact-name-from-list", "confidence": 0.95, "reasoning": "why this matches"},
-  {"id": "exact-id-from-list", "name": "exact-name-from-list", "confidence": 0.70, "reasoning": "why this matches"},
-  {"id": "exact-id-from-list", "name": "exact-name-from-list", "confidence": 0.40, "reasoning": "why this matches"}
-]}`,
-    },
-  ], 512);
-
-  // Parse pass 2 response
-  const cleaned2 = pass2Text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  // Strip markdown code fences if present
+  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
   let matches: Array<{ id: string; name: string; confidence: number; reasoning: string }> = [];
   try {
-    const p = JSON.parse(cleaned2);
+    const p = JSON.parse(cleaned);
     matches = p.matches || [];
   } catch {
-    // Try to find JSON in the response
-    const jsonMatch = cleaned2.match(/\{[\s\S]*"matches"[\s\S]*\}/);
+    // Try to extract JSON from response
+    const jsonMatch = cleaned.match(/\{[\s\S]*"matches"[\s\S]*\}/);
     if (jsonMatch) {
       try {
-        const p = JSON.parse(jsonMatch[0]);
-        matches = p.matches || [];
+        matches = JSON.parse(jsonMatch[0]).matches || [];
       } catch { /* give up */ }
     }
   }
 
-  // Build candidate lookup for validation
-  const candidateMap = new Map<string, CatalogMinifig>();
-  for (const c of candidates) candidateMap.set(c.id, c);
-
-  // Validate matches against candidates
+  // Validate matches against catalog
   const validated: GeminiMatch[] = [];
   for (const m of matches) {
-    const minifig = candidateMap.get(m.id);
+    const minifig = catalogMap.get(m.id);
     if (minifig) {
       validated.push({
         id: m.id,
