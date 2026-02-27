@@ -114,11 +114,15 @@ export function MinifigDetailModal({
             <>
               <div className="grid grid-cols-2 gap-3">
                 <Input
-                  label="Quantity"
+                  label="Total Quantity"
                   type="number"
                   min={1}
                   value={entry.quantity}
-                  onChange={e => onUpdateEntry(minifig.id, { quantity: Math.max(1, Number(e.target.value)) })}
+                  onChange={e => {
+                    const newQty = Math.max(1, Number(e.target.value));
+                    const newForSale = Math.max(0, Math.min(entry.forSaleQuantity ?? 0, newQty - 1));
+                    onUpdateEntry(minifig.id, { quantity: newQty, forSaleQuantity: newForSale });
+                  }}
                 />
                 <Select
                   label="Condition"
@@ -130,6 +134,18 @@ export function MinifigDetailModal({
                     { value: 'damaged', label: 'Damaged' },
                   ]}
                 />
+                {entry.quantity > 1 && (
+                  <Input
+                    label="For Sale"
+                    type="number"
+                    min={0}
+                    max={entry.quantity - 1}
+                    value={entry.forSaleQuantity ?? 0}
+                    onChange={e => onUpdateEntry(minifig.id, {
+                      forSaleQuantity: Math.max(0, Math.min(entry.quantity - 1, Number(e.target.value))),
+                    })}
+                  />
+                )}
                 <Input
                   label="Price Paid ($)"
                   type="number"

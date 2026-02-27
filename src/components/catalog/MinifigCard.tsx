@@ -25,7 +25,12 @@ export function MinifigCard({ minifig, entry, onClick }: MinifigCardProps) {
           className="w-full h-full"
         />
         {entry && (
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-2 right-2 flex items-center gap-1">
+            {entry.quantity > 1 && (
+              <span className="bg-black/80 text-sw-gold text-xs font-bold px-1.5 py-0.5 rounded">
+                x{entry.quantity}
+              </span>
+            )}
             <StatusDot status={entry.status} />
           </div>
         )}

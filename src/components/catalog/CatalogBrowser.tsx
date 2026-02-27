@@ -1,21 +1,34 @@
 import { useState } from 'react';
-import type { CatalogMinifig, CollectionEntry, ItemStatus } from '../../types';
+import type { CatalogMinifig, CollectionEntry, ItemStatus, ItemCondition } from '../../types';
 import { useCatalog } from '../../hooks/useCatalog';
 import { CatalogFilters } from './CatalogFilters';
 import { MinifigCard } from './MinifigCard';
 import { MinifigDetailModal } from './MinifigDetailModal';
+import { AddToCollectionModal } from './AddToCollectionModal';
 import { Pagination } from '../ui/Pagination';
 
 interface CatalogBrowserProps {
   collection: Record<string, CollectionEntry>;
   onStatusChange: (minifigId: string, status: ItemStatus) => void;
+  onAddWithQuantity: (minifigId: string, quantity: number, condition: ItemCondition, pricePaid: number | null) => void;
   onUpdateEntry: (minifigId: string, updates: Partial<CollectionEntry>) => void;
   onRemove: (minifigId: string) => void;
 }
 
-export function CatalogBrowser({ collection, onStatusChange, onUpdateEntry, onRemove }: CatalogBrowserProps) {
+export function CatalogBrowser({ collection, onStatusChange, onAddWithQuantity, onUpdateEntry, onRemove }: CatalogBrowserProps) {
   const { filter, updateFilter, resetFilter, pageItems, page, setPage, totalPages, totalResults } = useCatalog(collection);
   const [selectedMinifig, setSelectedMinifig] = useState<CatalogMinifig | null>(null);
+  const [addMinifig, setAddMinifig] = useState<CatalogMinifig | null>(null);
+
+  const handleCardClick = (minifig: CatalogMinifig) => {
+    if (collection[minifig.id]) {
+      // Already in collection — open detail modal
+      setSelectedMinifig(minifig);
+    } else {
+      // Not in collection — open add modal
+      setAddMinifig(minifig);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -38,7 +51,7 @@ export function CatalogBrowser({ collection, onStatusChange, onUpdateEntry, onRe
               key={m.id}
               minifig={m}
               entry={collection[m.id]}
-              onClick={() => setSelectedMinifig(m)}
+              onClick={() => handleCardClick(m)}
             />
           ))}
         </div>
@@ -49,6 +62,12 @@ export function CatalogBrowser({ collection, onStatusChange, onUpdateEntry, onRe
         totalPages={totalPages}
         onPageChange={setPage}
         totalResults={totalResults}
+      />
+
+      <AddToCollectionModal
+        minifig={addMinifig}
+        onClose={() => setAddMinifig(null)}
+        onAdd={onAddWithQuantity}
       />
 
       <MinifigDetailModal

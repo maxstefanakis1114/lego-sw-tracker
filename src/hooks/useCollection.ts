@@ -20,8 +20,49 @@ export function useCollection() {
           minifigId,
           status,
           quantity: 1,
+          forSaleQuantity: 0,
           condition: 'used' as ItemCondition,
           pricePaid: null,
+          priceSold: null,
+          askingPrice: null,
+          notes: '',
+          customImageUrl: '',
+          sku: '',
+          dateAdded: now,
+          dateModified: now,
+        },
+      };
+    });
+  }, [setCollection]);
+
+  const addWithQuantity = useCallback((minifigId: string, totalQty: number, condition: ItemCondition, pricePaid: number | null) => {
+    const now = new Date().toISOString();
+    const forSaleQty = Math.max(0, totalQty - 1);
+    setCollection(prev => {
+      const existing = prev[minifigId];
+      if (existing) {
+        return {
+          ...prev,
+          [minifigId]: {
+            ...existing,
+            status: 'owned',
+            quantity: totalQty,
+            forSaleQuantity: forSaleQty,
+            condition,
+            pricePaid,
+            dateModified: now,
+          },
+        };
+      }
+      return {
+        ...prev,
+        [minifigId]: {
+          minifigId,
+          status: 'owned',
+          quantity: totalQty,
+          forSaleQuantity: forSaleQty,
+          condition,
+          pricePaid,
           priceSold: null,
           askingPrice: null,
           notes: '',
@@ -72,6 +113,7 @@ export function useCollection() {
             minifigId: item.minifigId,
             status: 'owned',
             quantity: 1,
+            forSaleQuantity: 0,
             condition: 'used' as ItemCondition,
             pricePaid: item.pricePaid,
             priceSold: null,
@@ -89,5 +131,5 @@ export function useCollection() {
     });
   }, [setCollection]);
 
-  return { collection, setStatus, updateEntry, removeEntry, bulkAdd };
+  return { collection, setStatus, addWithQuantity, updateEntry, removeEntry, bulkAdd };
 }

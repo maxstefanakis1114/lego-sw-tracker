@@ -16,6 +16,7 @@ export interface CollectionEntry {
   minifigId: string;
   status: ItemStatus;
   quantity: number;
+  forSaleQuantity: number;
   condition: ItemCondition;
   pricePaid: number | null;
   priceSold: number | null;

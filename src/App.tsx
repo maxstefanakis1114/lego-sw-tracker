@@ -15,7 +15,7 @@ import { RecordSaleModal } from './components/sales/RecordSaleModal';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
-  const { collection, setStatus, updateEntry, removeEntry, bulkAdd } = useCollection();
+  const { collection, setStatus, addWithQuantity, updateEntry, removeEntry, bulkAdd } = useCollection();
   const { lots, addLot, deleteLot } = usePurchaseLots();
 
   // Record sale modal state — triggerable from any tab
@@ -40,6 +40,7 @@ export default function App() {
           <CatalogBrowser
             collection={collection}
             onStatusChange={setStatus}
+            onAddWithQuantity={addWithQuantity}
             onUpdateEntry={updateEntry}
             onRemove={removeEntry}
           />

@@ -46,7 +46,7 @@ export function InventoryView({
 
   const inventoryItems = useMemo(() => {
     let entries = Object.values(collection).filter(
-      e => e.status === 'owned' || e.status === 'for-sale'
+      e => e.status === 'owned' || e.status === 'for-sale' || (e.forSaleQuantity ?? 0) > 0
     );
 
     if (search) {
@@ -193,13 +193,28 @@ export function InventoryView({
                           }
                         </td>
                         <td className="text-center py-2 px-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            entry.status === 'for-sale'
-                              ? 'bg-sw-orange/20 text-sw-orange'
-                              : 'bg-sw-green/20 text-sw-green'
-                          }`}>
-                            {entry.status === 'for-sale' ? 'For Sale' : 'Owned'}
-                          </span>
+                          <div className="flex flex-col items-center gap-0.5">
+                            {entry.quantity > 1 ? (
+                              <>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-sw-green/20 text-sw-green">
+                                  {entry.quantity - (entry.forSaleQuantity ?? 0)} kept
+                                </span>
+                                {(entry.forSaleQuantity ?? 0) > 0 && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-sw-orange/20 text-sw-orange">
+                                    {entry.forSaleQuantity} for sale
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                entry.status === 'for-sale'
+                                  ? 'bg-sw-orange/20 text-sw-orange'
+                                  : 'bg-sw-green/20 text-sw-green'
+                              }`}>
+                                {entry.status === 'for-sale' ? 'For Sale' : 'Owned'}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="text-right py-2 px-3">
                           <QuickStatusButtons

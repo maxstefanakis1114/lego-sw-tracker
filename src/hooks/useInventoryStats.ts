@@ -30,8 +30,17 @@ export function useInventoryStats(collection: Record<string, CollectionEntry>): 
         const mkt = entry.askingPrice ?? getMarketPrice(entry.minifigId) ?? 0;
         marketValue += mkt * entry.quantity;
 
-        if (entry.status === 'owned') ownedCount++;
-        if (entry.status === 'for-sale') forSaleCount++;
+        // Count for-sale from both status and forSaleQuantity
+        const fsq = entry.forSaleQuantity ?? 0;
+        if (entry.status === 'for-sale') {
+          forSaleCount += entry.quantity;
+        } else if (fsq > 0) {
+          forSaleCount += fsq;
+          ownedCount += entry.quantity - fsq;
+        } else {
+          ownedCount += entry.quantity;
+        }
+
         if (!entry.pricePaid) noPriceCount++;
       }
     }
