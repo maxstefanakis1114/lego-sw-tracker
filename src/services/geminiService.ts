@@ -1,4 +1,4 @@
-import { getCatalog, getMinifig } from './catalogService';
+import { getCatalog } from './catalogService';
 import type { CatalogMinifig } from '../types';
 
 export interface GeminiMatch {
@@ -11,16 +11,7 @@ export interface GeminiMatch {
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-let catalogPromptCache: string | null = null;
-
-function buildCatalogPrompt(): string {
-  if (catalogPromptCache) return catalogPromptCache;
-  const lines = getCatalog().map(m => `${m.id}|${m.name}`).join('\n');
-  catalogPromptCache = lines;
-  return lines;
-}
-
-function resizeImage(file: File, maxDim = 1024): Promise<string> {
+function resizeImage(file: File, maxDim = 768): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -35,7 +26,7 @@ function resizeImage(file: File, maxDim = 1024): Promise<string> {
       canvas.height = height;
       const ctx = canvas.getContext('2d')!;
       ctx.drawImage(img, 0, 0, width, height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
       URL.revokeObjectURL(img.src);
       resolve(dataUrl);
     };
@@ -47,33 +38,105 @@ function resizeImage(file: File, maxDim = 1024): Promise<string> {
   });
 }
 
-export async function identifyMinifig(file: File, apiKey: string): Promise<GeminiMatch[]> {
-  const dataUrl = await resizeImage(file);
-  const catalogList = buildCatalogPrompt();
+// Fuzzy match score — how well does a query match a catalog name
+function matchScore(query: string, target: string): number {
+  const q = query.toLowerCase();
+  const t = target.toLowerCase();
 
-  const prompt = `You are a LEGO Star Wars minifigure identification expert. Analyze this photo and identify the LEGO Star Wars minifigure shown.
+  // Exact match
+  if (q === t) return 100;
 
-Look at:
-- The torso print/design
-- Head print (face, helmet type)
-- Leg color and printing
-- Any accessories (lightsabers, blasters, capes)
-- Overall color scheme
+  // Target contains query
+  if (t.includes(q)) return 80;
 
-Match against this catalog of known LEGO Star Wars minifigures (format: id|name):
+  // Query contains target
+  if (q.includes(t)) return 70;
 
-${catalogList}
+  // Word overlap scoring
+  const qWords = q.split(/[\s,\-()]+/).filter(w => w.length > 1);
+  const tWords = t.split(/[\s,\-()]+/).filter(w => w.length > 1);
 
-Respond with ONLY valid JSON in this exact format, no other text:
-{
-  "matches": [
-    {"id": "fig-XXXXXX", "name": "Exact Name From Catalog", "confidence": 0.95, "reasoning": "Brief reason"},
-    {"id": "fig-YYYYYY", "name": "Exact Name From Catalog", "confidence": 0.70, "reasoning": "Brief reason"},
-    {"id": "fig-ZZZZZZ", "name": "Exact Name From Catalog", "confidence": 0.40, "reasoning": "Brief reason"}
-  ]
+  let matched = 0;
+  for (const qw of qWords) {
+    for (const tw of tWords) {
+      if (tw.includes(qw) || qw.includes(tw)) {
+        matched++;
+        break;
+      }
+    }
+  }
+
+  if (qWords.length === 0) return 0;
+  return (matched / Math.max(qWords.length, 1)) * 60;
 }
 
-Return your top 3 best matches, most confident first. If you cannot identify any LEGO Star Wars minifigure in the image, return: {"matches": []}`;
+function findMatches(description: string): GeminiMatch[] {
+  const catalog = getCatalog();
+
+  // Extract key terms from the AI description
+  const lines = description.split('\n').filter(l => l.trim());
+
+  // Try to find character name, faction, and other identifiers
+  const searchTerms: string[] = [];
+  for (const line of lines) {
+    // Look for name-like patterns
+    const cleaned = line.replace(/^[\-\*\d.]+\s*/, '').replace(/["']/g, '');
+    if (cleaned.length > 2 && cleaned.length < 100) {
+      searchTerms.push(cleaned);
+    }
+  }
+
+  // Also use the full description as one big search
+  searchTerms.push(description);
+
+  // Score every catalog entry
+  const scored = catalog.map(minifig => {
+    let bestScore = 0;
+    let bestReason = '';
+
+    for (const term of searchTerms) {
+      const score = matchScore(term, minifig.name);
+      if (score > bestScore) {
+        bestScore = score;
+        bestReason = term;
+      }
+
+      // Also check against faction
+      const factionScore = matchScore(term, minifig.faction) * 0.3;
+      if (factionScore > bestScore) {
+        bestScore = factionScore;
+        bestReason = `Faction: ${term}`;
+      }
+    }
+
+    return { minifig, score: bestScore, reason: bestReason };
+  });
+
+  // Sort by score, take top 3
+  scored.sort((a, b) => b.score - a.score);
+
+  return scored
+    .slice(0, 3)
+    .filter(s => s.score > 10)
+    .map(s => ({
+      id: s.minifig.id,
+      name: s.minifig.name,
+      confidence: Math.min(s.score / 100, 0.99),
+      reasoning: s.reason.slice(0, 100),
+      minifig: s.minifig,
+    }));
+}
+
+export async function identifyMinifig(file: File, apiKey: string): Promise<GeminiMatch[]> {
+  const dataUrl = await resizeImage(file);
+
+  const prompt = `Identify this LEGO Star Wars minifigure. Be specific about:
+1. The exact character name (e.g. "Clone Trooper Phase 2", "Darth Vader", "Luke Skywalker Hoth")
+2. Any specific variant details (markings, colors, episode)
+3. The faction (Clone, Rebel, Empire, Jedi, Sith, Droid, Bounty Hunter, etc.)
+
+Reply with ONLY a JSON object:
+{"name": "Character Name with Variant", "faction": "Faction", "details": "Brief description of torso print, helmet, accessories"}`;
 
   const response = await fetch(GROQ_URL, {
     method: 'POST',
@@ -87,19 +150,13 @@ Return your top 3 best matches, most confident first. If you cannot identify any
         {
           role: 'user',
           content: [
-            {
-              type: 'image_url',
-              image_url: { url: dataUrl },
-            },
-            {
-              type: 'text',
-              text: prompt,
-            },
+            { type: 'image_url', image_url: { url: dataUrl } },
+            { type: 'text', text: prompt },
           ],
         },
       ],
       temperature: 0.2,
-      max_tokens: 1024,
+      max_tokens: 256,
     }),
   });
 
@@ -115,34 +172,18 @@ Return your top 3 best matches, most confident first. If you cannot identify any
   const data = await response.json();
   const text = data.choices?.[0]?.message?.content ?? '';
 
-  // Strip markdown code fences if present
+  // Try to parse JSON from response
   const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-  let parsed: { matches: Array<{ id: string; name: string; confidence: number; reasoning: string }> };
+  let searchText = cleaned;
   try {
-    parsed = JSON.parse(cleaned);
+    const parsed = JSON.parse(cleaned);
+    // Build search string from structured response
+    searchText = [parsed.name, parsed.faction, parsed.details].filter(Boolean).join(' ');
   } catch {
-    throw new Error('Could not parse response. Try again.');
+    // If not valid JSON, use the raw text for matching
   }
 
-  if (!parsed.matches || !Array.isArray(parsed.matches)) {
-    return [];
-  }
-
-  // Validate IDs against catalog and attach minifig data
-  const validated: GeminiMatch[] = [];
-  for (const m of parsed.matches) {
-    const minifig = getMinifig(m.id);
-    if (minifig) {
-      validated.push({
-        id: m.id,
-        name: minifig.name,
-        confidence: m.confidence,
-        reasoning: m.reasoning,
-        minifig,
-      });
-    }
-    if (validated.length >= 3) break;
-  }
-  return validated;
+  // Match against catalog locally
+  return findMatches(searchText);
 }
