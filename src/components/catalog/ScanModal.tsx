@@ -151,7 +151,7 @@ export function ScanModal({ open, onClose, onMatch, onOpenSettings }: ScanModalP
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-sw-text-dim">
-                  {matches.length} match{matches.length !== 1 ? 'es' : ''} found
+                  {matches.length} match{matches.length !== 1 ? 'es' : ''} found — pick your variant
                 </p>
                 {matches.map((match) => {
                   const price = getMarketPrice(match.id);
