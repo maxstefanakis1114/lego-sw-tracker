@@ -11,7 +11,7 @@ export interface GeminiMatch {
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-function resizeImage(file: File, maxDim = 768): Promise<string> {
+function resizeImage(file: File, maxDim = 512): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -162,11 +162,11 @@ Reply with ONLY a JSON object:
 
   if (!response.ok) {
     const status = response.status;
-    if (status === 401) throw new Error('Invalid API key. Check your settings.');
-    if (status === 429) throw new Error('Too many requests. Wait a moment and try again.');
     const body = await response.json().catch(() => null);
-    const msg = body?.error?.message || `API error (${status})`;
-    throw new Error(msg);
+    const detail = body?.error?.message || '';
+    if (status === 401) throw new Error('Invalid API key. Check your settings.');
+    if (status === 429) throw new Error(`Rate limited: ${detail || 'Wait a moment and try again.'}`);
+    throw new Error(detail || `API error (${status})`);
   }
 
   const data = await response.json();
