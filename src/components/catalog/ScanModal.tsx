@@ -18,7 +18,7 @@ interface ScanModalProps {
 type ScanState = 'idle' | 'loading' | 'results' | 'error';
 
 export function ScanModal({ open, onClose, onMatch, onOpenSettings }: ScanModalProps) {
-  const [apiKey] = useLocalStorage('groq-api-key', import.meta.env.VITE_GROQ_API_KEY ?? '');
+  const [apiKey] = useLocalStorage('gemini-api-key', import.meta.env.VITE_GEMINI_API_KEY ?? '');
   const [state, setState] = useState<ScanState>('idle');
   const [matches, setMatches] = useState<GeminiMatch[]>([]);
   const [error, setError] = useState('');
@@ -92,7 +92,7 @@ export function ScanModal({ open, onClose, onMatch, onOpenSettings }: ScanModalP
             <AlertCircle size={40} className="mx-auto mb-3 text-sw-orange opacity-60" />
             <p className="text-sw-text mb-1">API key required</p>
             <p className="text-sm text-sw-text-dim mb-4">
-              Set up your free Google Gemini API key to start scanning.
+              Set up your free Gemini API key to start scanning.
             </p>
             <Button onClick={() => { handleClose(); onOpenSettings(); }}>
               <Settings size={14} />
