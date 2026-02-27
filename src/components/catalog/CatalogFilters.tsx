@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, RotateCcw } from 'lucide-react';
+import { Search, RotateCcw, Camera } from 'lucide-react';
 import type { CatalogFilter } from '../../types';
 import { getAllFactions, getYearRange } from '../../services/catalogService';
 import { Select } from '../ui/Select';
@@ -9,13 +9,14 @@ interface CatalogFiltersProps {
   filter: CatalogFilter;
   onFilterChange: (updates: Partial<CatalogFilter>) => void;
   onReset: () => void;
+  onScan: () => void;
   totalResults: number;
 }
 
 const factions = getAllFactions();
 const [yearMin, yearMax] = getYearRange();
 
-export function CatalogFilters({ filter, onFilterChange, onReset, totalResults }: CatalogFiltersProps) {
+export function CatalogFilters({ filter, onFilterChange, onReset, onScan, totalResults }: CatalogFiltersProps) {
   const [searchInput, setSearchInput] = useState(filter.search);
 
   useEffect(() => {
@@ -111,6 +112,11 @@ export function CatalogFilters({ filter, onFilterChange, onReset, totalResults }
             { value: 'id-desc', label: 'ID Z-A' },
           ]}
         />
+
+        <Button size="sm" onClick={onScan} className="mb-0.5">
+          <Camera size={14} />
+          Scan
+        </Button>
 
         <Button variant="ghost" size="sm" onClick={onReset} className="mb-0.5">
           <RotateCcw size={14} />

@@ -5,6 +5,8 @@ import { CatalogFilters } from './CatalogFilters';
 import { MinifigCard } from './MinifigCard';
 import { MinifigDetailModal } from './MinifigDetailModal';
 import { AddToCollectionModal } from './AddToCollectionModal';
+import { ScanModal } from './ScanModal';
+import { ScanSettingsModal } from './ScanSettingsModal';
 import { Pagination } from '../ui/Pagination';
 
 interface CatalogBrowserProps {
@@ -19,13 +21,21 @@ export function CatalogBrowser({ collection, onStatusChange, onAddWithQuantity, 
   const { filter, updateFilter, resetFilter, pageItems, page, setPage, totalPages, totalResults } = useCatalog(collection);
   const [selectedMinifig, setSelectedMinifig] = useState<CatalogMinifig | null>(null);
   const [addMinifig, setAddMinifig] = useState<CatalogMinifig | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleCardClick = (minifig: CatalogMinifig) => {
     if (collection[minifig.id]) {
-      // Already in collection — open detail modal
       setSelectedMinifig(minifig);
     } else {
-      // Not in collection — open add modal
+      setAddMinifig(minifig);
+    }
+  };
+
+  const handleScanMatch = (minifig: CatalogMinifig) => {
+    if (collection[minifig.id]) {
+      setSelectedMinifig(minifig);
+    } else {
       setAddMinifig(minifig);
     }
   };
@@ -36,6 +46,7 @@ export function CatalogBrowser({ collection, onStatusChange, onAddWithQuantity, 
         filter={filter}
         onFilterChange={updateFilter}
         onReset={resetFilter}
+        onScan={() => setScanOpen(true)}
         totalResults={totalResults}
       />
 
@@ -62,6 +73,18 @@ export function CatalogBrowser({ collection, onStatusChange, onAddWithQuantity, 
         totalPages={totalPages}
         onPageChange={setPage}
         totalResults={totalResults}
+      />
+
+      <ScanModal
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onMatch={handleScanMatch}
+        onOpenSettings={() => { setScanOpen(false); setSettingsOpen(true); }}
+      />
+
+      <ScanSettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
       />
 
       <AddToCollectionModal
