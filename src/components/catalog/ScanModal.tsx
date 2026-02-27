@@ -18,7 +18,7 @@ interface ScanModalProps {
 type ScanState = 'idle' | 'loading' | 'results' | 'error';
 
 export function ScanModal({ open, onClose, onMatch, onOpenSettings }: ScanModalProps) {
-  const [apiKey] = useLocalStorage('groq-api-key', '');
+  const [apiKey] = useLocalStorage('groq-api-key', import.meta.env.VITE_GROQ_API_KEY ?? '');
   const [state, setState] = useState<ScanState>('idle');
   const [matches, setMatches] = useState<GeminiMatch[]>([]);
   const [error, setError] = useState('');
