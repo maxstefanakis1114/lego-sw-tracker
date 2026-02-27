@@ -9,7 +9,7 @@ export interface GeminiMatch {
   minifig?: CatalogMinifig;
 }
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 function resizeImage(file: File, maxDim = 512): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -69,20 +69,30 @@ function scoreMatch(searchTerms: string[], name: string): number {
 
 export async function identifyMinifig(file: File, apiKey: string): Promise<GeminiMatch[]> {
   const dataUrl = await resizeImage(file);
-  // Extract raw base64 (strip data:image/jpeg;base64, prefix)
-  const base64 = dataUrl.split(',')[1];
 
-  const response = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+  const response = await fetch(GROQ_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
     body: JSON.stringify({
-      contents: [{
-        parts: [
-          { inline_data: { mime_type: 'image/jpeg', data: base64 } },
-          { text: 'This is a LEGO Star Wars minifigure. Reply with ONLY a JSON object — no other text:\n{"character": "character name (e.g. C-3PO, Darth Vader, Clone Trooper)", "variant": "any distinguishing details like color, armor markings, episode", "faction": "e.g. Droid, Empire, Clone, Jedi, Rebel"}' },
-        ],
-      }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 100 },
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: dataUrl } },
+            {
+              type: 'text',
+              text: `This is a LEGO Star Wars minifigure. Reply with ONLY a JSON object — no other text:
+{"character": "character name (e.g. C-3PO, Darth Vader, Clone Trooper)", "variant": "any distinguishing details like color, armor markings, episode", "faction": "e.g. Droid, Empire, Clone, Jedi, Rebel"}`,
+            },
+          ],
+        },
+      ],
+      temperature: 0.1,
+      max_tokens: 100,
     }),
   });
 
@@ -90,14 +100,13 @@ export async function identifyMinifig(file: File, apiKey: string): Promise<Gemin
     const status = response.status;
     const body = await response.json().catch(() => null);
     const detail = body?.error?.message || '';
-    if (status === 400 && detail.includes('API_KEY')) throw new Error('Invalid API key. Check your settings.');
-    if (status === 403) throw new Error('API key not authorized. Make sure the Gemini API is enabled.');
+    if (status === 401) throw new Error('Invalid API key. Check your settings.');
     if (status === 429) throw new Error(`Rate limited: ${detail || 'Wait a moment and try again.'}`);
     throw new Error(detail || `API error (${status})`);
   }
 
   const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const text = data.choices?.[0]?.message?.content ?? '';
   const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
   // Parse AI response
