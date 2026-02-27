@@ -11,7 +11,7 @@ interface ScanSettingsModalProps {
 }
 
 export function ScanSettingsModal({ open, onClose }: ScanSettingsModalProps) {
-  const [storedKey, setStoredKey] = useLocalStorage('gemini-api-key', '');
+  const [storedKey, setStoredKey] = useLocalStorage('groq-api-key', '');
   const [keyInput, setKeyInput] = useState('');
 
   useEffect(() => {
@@ -36,9 +36,9 @@ export function ScanSettingsModal({ open, onClose }: ScanSettingsModalProps) {
         <div className="flex items-start gap-3 p-3 rounded-lg bg-sw-dark border border-sw-border">
           <Key size={16} className="text-sw-gold mt-0.5 shrink-0" />
           <div className="text-sm text-sw-text-dim">
-            <p>Enter your Google Gemini API key to enable minifig scanning. The free tier allows 1,500 scans per day.</p>
+            <p>Enter your Groq API key to enable minifig scanning. Free tier included.</p>
             <a
-              href="https://aistudio.google.com/apikey"
+              href="https://console.groq.com/keys"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-sw-blue hover:underline mt-2"
@@ -49,11 +49,11 @@ export function ScanSettingsModal({ open, onClose }: ScanSettingsModalProps) {
         </div>
 
         <Input
-          label="Gemini API Key"
+          label="Groq API Key"
           type="password"
           value={keyInput}
           onChange={e => setKeyInput(e.target.value)}
-          placeholder="AIza..."
+          placeholder="gsk_..."
         />
 
         <div className="flex gap-2">

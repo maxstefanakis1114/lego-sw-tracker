@@ -9,7 +9,7 @@ export interface GeminiMatch {
   minifig?: CatalogMinifig;
 }
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 let catalogPromptCache: string | null = null;
 
@@ -37,7 +37,7 @@ function resizeImage(file: File, maxDim = 1024): Promise<string> {
       ctx.drawImage(img, 0, 0, width, height);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
       URL.revokeObjectURL(img.src);
-      resolve(dataUrl.split(',')[1]);
+      resolve(dataUrl);
     };
     img.onerror = () => {
       URL.revokeObjectURL(img.src);
@@ -48,7 +48,7 @@ function resizeImage(file: File, maxDim = 1024): Promise<string> {
 }
 
 export async function identifyMinifig(file: File, apiKey: string): Promise<GeminiMatch[]> {
-  const base64 = await resizeImage(file);
+  const dataUrl = await resizeImage(file);
   const catalogList = buildCatalogPrompt();
 
   const prompt = `You are a LEGO Star Wars minifigure identification expert. Analyze this photo and identify the LEGO Star Wars minifigure shown.
@@ -75,28 +75,45 @@ Respond with ONLY valid JSON in this exact format, no other text:
 
 Return your top 3 best matches, most confident first. If you cannot identify any LEGO Star Wars minifigure in the image, return: {"matches": []}`;
 
-  const response = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+  const response = await fetch(GROQ_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
     body: JSON.stringify({
-      contents: [{
-        parts: [
-          { inline_data: { mime_type: 'image/jpeg', data: base64 } },
-          { text: prompt },
-        ],
-      }],
+      model: 'llama-3.2-90b-vision-preview',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: dataUrl },
+            },
+            {
+              type: 'text',
+              text: prompt,
+            },
+          ],
+        },
+      ],
+      temperature: 0.2,
+      max_tokens: 1024,
     }),
   });
 
   if (!response.ok) {
     const status = response.status;
-    if (status === 401 || status === 403) throw new Error('Invalid API key. Check your settings.');
+    if (status === 401) throw new Error('Invalid API key. Check your settings.');
     if (status === 429) throw new Error('Too many requests. Wait a moment and try again.');
-    throw new Error(`API error (${status}). Try again.`);
+    const body = await response.json().catch(() => null);
+    const msg = body?.error?.message || `API error (${status})`;
+    throw new Error(msg);
   }
 
   const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const text = data.choices?.[0]?.message?.content ?? '';
 
   // Strip markdown code fences if present
   const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
