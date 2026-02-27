@@ -18,7 +18,7 @@ interface ScanModalProps {
 type ScanState = 'idle' | 'loading' | 'results' | 'error';
 
 export function ScanModal({ open, onClose, onMatch, onOpenSettings }: ScanModalProps) {
-  const [apiKey] = useLocalStorage('gemini-api-key', '');
+  const [apiKey] = useLocalStorage('gemini-api-key', 'AIzaSyAFC1ivIUhhpCyTNpVe8clAkLG0Qgk6AjE');
   const [state, setState] = useState<ScanState>('idle');
   const [matches, setMatches] = useState<GeminiMatch[]>([]);
   const [error, setError] = useState('');
