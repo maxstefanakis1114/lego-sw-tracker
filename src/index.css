@@ -1,0 +1,279 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sw-black: #0a0a0a;
+  --color-sw-dark: #141414;
+  --color-sw-card: #1a1a1a;
+  --color-sw-border: #2a2a2a;
+  --color-sw-gold: #ffc500;
+  --color-sw-gold-dim: #b8930a;
+  --color-sw-gold-glow: #ffd54f;
+  --color-sw-text: #e8e8e8;
+  --color-sw-text-dim: #888888;
+  --color-sw-blue: #4fc3f7;
+  --color-sw-red: #ef5350;
+  --color-sw-green: #66bb6a;
+  --color-sw-orange: #ffa726;
+  --color-sw-purple: #ab47bc;
+  --font-sw-title: 'Orbitron', sans-serif;
+}
+
+html {
+  background-color: var(--color-sw-black);
+  color: var(--color-sw-text);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-sw-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-sw-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-sw-text-dim);
+}
+
+.glass {
+  background: linear-gradient(135deg, rgba(26, 26, 26, 0.9), rgba(20, 20, 20, 0.95));
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--color-sw-border);
+}
+
+.glow-gold {
+  box-shadow: 0 0 20px rgba(255, 197, 0, 0.15);
+}
+
+/* ============================================
+   STARFIELD BACKGROUND
+   ============================================ */
+
+.starfield {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.starfield::before,
+.starfield::after,
+.starfield .stars-layer {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: white;
+}
+
+/* Layer 1: Small dim stars */
+.starfield::before {
+  width: 1px;
+  height: 1px;
+  animation: drift 200s linear infinite;
+  box-shadow:
+    42px 120px rgba(255,255,255,0.4), 180px 300px rgba(255,255,255,0.3),
+    340px 80px rgba(255,255,255,0.5), 520px 210px rgba(255,255,255,0.3),
+    700px 50px rgba(255,255,255,0.4), 890px 400px rgba(255,255,255,0.3),
+    1050px 150px rgba(255,255,255,0.5), 1200px 330px rgba(255,255,255,0.3),
+    60px 500px rgba(255,255,255,0.4), 250px 650px rgba(255,255,255,0.3),
+    430px 420px rgba(255,255,255,0.5), 600px 580px rgba(255,255,255,0.4),
+    780px 700px rgba(255,255,255,0.3), 950px 550px rgba(255,255,255,0.4),
+    1100px 620px rgba(255,255,255,0.3), 1300px 480px rgba(255,255,255,0.5),
+    100px 800px rgba(255,255,255,0.3), 310px 900px rgba(255,255,255,0.4),
+    490px 780px rgba(255,255,255,0.3), 670px 870px rgba(255,255,255,0.5),
+    850px 820px rgba(255,255,255,0.3), 1020px 950px rgba(255,255,255,0.4),
+    1180px 760px rgba(255,255,255,0.3), 1380px 880px rgba(255,255,255,0.4),
+    150px 1050px rgba(255,255,255,0.3), 370px 1120px rgba(255,255,255,0.4),
+    540px 1000px rgba(255,255,255,0.5), 720px 1150px rgba(255,255,255,0.3),
+    900px 1080px rgba(255,255,255,0.4), 1080px 1200px rgba(255,255,255,0.3),
+    1250px 1050px rgba(255,255,255,0.4), 1400px 1150px rgba(255,255,255,0.3),
+    200px 1300px rgba(255,255,255,0.4), 420px 1400px rgba(255,255,255,0.3),
+    590px 1250px rgba(255,255,255,0.5), 770px 1380px rgba(255,255,255,0.3),
+    80px 1450px rgba(255,255,255,0.4), 1350px 1350px rgba(255,255,255,0.3),
+    950px 1280px rgba(255,255,255,0.4), 1130px 1400px rgba(255,255,255,0.5);
+}
+
+/* Layer 2: Medium brighter stars */
+.starfield::after {
+  width: 2px;
+  height: 2px;
+  animation: drift 150s linear infinite;
+  box-shadow:
+    90px 250px rgba(255,255,255,0.6), 380px 40px rgba(255,255,255,0.5),
+    650px 320px rgba(255,255,255,0.7), 1000px 100px rgba(255,255,255,0.5),
+    1280px 270px rgba(255,255,255,0.6), 200px 550px rgba(255,255,255,0.5),
+    500px 700px rgba(255,255,255,0.7), 810px 450px rgba(255,255,255,0.5),
+    1100px 680px rgba(255,255,255,0.6), 1350px 530px rgba(255,255,255,0.5),
+    140px 900px rgba(255,255,255,0.6), 460px 1050px rgba(255,255,255,0.5),
+    730px 960px rgba(255,255,255,0.7), 1050px 850px rgba(255,255,255,0.5),
+    300px 1250px rgba(255,255,255,0.6), 680px 1350px rgba(255,255,255,0.5),
+    1200px 1100px rgba(255,255,255,0.6), 550px 180px rgba(255,255,255,0.5),
+    920px 1400px rgba(255,255,255,0.6), 1400px 900px rgba(255,255,255,0.5);
+}
+
+/* Layer 3: Large bright stars */
+.starfield .stars-layer {
+  width: 3px;
+  height: 3px;
+  animation: twinkle 4s ease-in-out infinite, drift 120s linear infinite;
+  box-shadow:
+    300px 150px rgba(255,255,255,0.8), 850px 300px rgba(255,255,255,0.7),
+    1200px 500px rgba(255,255,255,0.8), 150px 700px rgba(255,255,255,0.7),
+    600px 900px rgba(255,255,255,0.8), 1000px 1100px rgba(255,255,255,0.7),
+    400px 1300px rgba(255,255,255,0.8), 1300px 200px rgba(255,255,255,0.7),
+    750px 600px rgba(255,255,255,0.8), 50px 1100px rgba(255,255,255,0.7);
+}
+
+@keyframes drift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-600px); }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ============================================
+   FACTION CARD HOVER GLOWS
+   ============================================ */
+
+.faction-glow-jedi { --faction-color: #4fc3f7; }
+.faction-glow-sith { --faction-color: #ef5350; }
+.faction-glow-empire { --faction-color: #90a4ae; }
+.faction-glow-rebel { --faction-color: #ef5350; }
+.faction-glow-mandalorian { --faction-color: #4db6ac; }
+.faction-glow-clone { --faction-color: #fff176; }
+.faction-glow-bounty { --faction-color: #66bb6a; }
+.faction-glow-droid { --faction-color: #b0bec5; }
+.faction-glow-wookiee { --faction-color: #8d6e63; }
+.faction-glow-ewok { --faction-color: #a1887f; }
+.faction-glow-civilian { --faction-color: #ffcc80; }
+.faction-glow-default { --faction-color: #ffc500; }
+
+.card-hover-glow {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.card-hover-glow:hover {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--faction-color) 25%, transparent),
+              inset 0 0 18px color-mix(in srgb, var(--faction-color) 5%, transparent);
+  border-color: color-mix(in srgb, var(--faction-color) 40%, transparent);
+}
+
+.card-faction-accent {
+  position: relative;
+}
+.card-faction-accent::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--faction-color), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+  border-radius: 1px;
+}
+.card-faction-accent:hover::before {
+  opacity: 0.7;
+}
+
+/* ============================================
+   HOLOGRAM MODALS
+   ============================================ */
+
+.hologram {
+  background: linear-gradient(
+    180deg,
+    rgba(20, 40, 60, 0.95) 0%,
+    rgba(15, 30, 50, 0.97) 100%
+  );
+  border: 1px solid rgba(79, 195, 247, 0.25);
+  box-shadow:
+    0 0 30px rgba(79, 195, 247, 0.08),
+    inset 0 0 30px rgba(79, 195, 247, 0.03);
+}
+
+.hologram-scanlines {
+  position: relative;
+}
+.hologram-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(79, 195, 247, 0.015) 3px,
+    rgba(79, 195, 247, 0.015) 4px
+  );
+  z-index: 1;
+  border-radius: inherit;
+}
+
+/* ============================================
+   LIGHTSABER DIVIDERS
+   ============================================ */
+
+.lightsaber-divider {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-sw-gold) 15%,
+    var(--color-sw-gold-glow) 50%,
+    var(--color-sw-gold) 85%,
+    transparent 100%
+  );
+  box-shadow: 0 0 8px rgba(255, 197, 0, 0.3);
+  border: none;
+  margin: 1.5rem 0;
+}
+
+.lightsaber-divider-blue {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-sw-blue) 15%,
+    #81d4fa 50%,
+    var(--color-sw-blue) 85%,
+    transparent 100%
+  );
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.3);
+  border: none;
+  margin: 1.5rem 0;
+}
+
+/* ============================================
+   TAB TRANSITIONS
+   ============================================ */
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab-transition {
+  animation: fadeSlideIn 0.25s ease-out;
+}
