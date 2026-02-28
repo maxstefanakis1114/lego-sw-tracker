@@ -15,23 +15,26 @@ export function useSync(onRemoteUpdate: () => void) {
   const [error, setError] = useState('');
   const pushTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Pull on mount if connected
+  // Auto-pull every 15 seconds when connected
   useEffect(() => {
     if (!syncId) return;
-    pullSync().then(data => {
-      if (data) {
-        setLastSynced(data.lastModified);
-        // Check if remote is newer
-        const localMod = localStorage.getItem('sync-last-push') || '';
-        if (data.lastModified > localMod) {
-          // Apply remote data
-          if (data.collection) localStorage.setItem('collection', JSON.stringify(data.collection));
-          if (data.sales) localStorage.setItem('sales', JSON.stringify(data.sales));
-          if (data.purchaseLots) localStorage.setItem('purchase-lots', JSON.stringify(data.purchaseLots));
-          onRemoteUpdate();
+    const doPull = () => {
+      pullSync().then(data => {
+        if (data) {
+          setLastSynced(data.lastModified);
+          const localMod = localStorage.getItem('sync-last-push') || '';
+          if (data.lastModified > localMod) {
+            if (data.collection) localStorage.setItem('collection', JSON.stringify(data.collection));
+            if (data.sales) localStorage.setItem('sales', JSON.stringify(data.sales));
+            if (data.purchaseLots) localStorage.setItem('purchase-lots', JSON.stringify(data.purchaseLots));
+            onRemoteUpdate();
+          }
         }
-      }
-    });
+      });
+    };
+    doPull();
+    const interval = setInterval(doPull, 15000);
+    return () => clearInterval(interval);
   }, [syncId, onRemoteUpdate]);
 
   const handleCreate = useCallback(async () => {
