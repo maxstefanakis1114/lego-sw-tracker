@@ -87,7 +87,11 @@ export default function App() {
           />
         )}
         {activeTab === 'sales' && (
-          <SalesView />
+          <SalesView
+            collection={collection}
+            onUpdateEntry={withSync(updateEntry)}
+            onStatusChange={withSync(setStatus)}
+          />
         )}
         {activeTab === 'export' && (
           <ExportView collection={collection} onUpdateEntry={withSync(updateEntry)} />
