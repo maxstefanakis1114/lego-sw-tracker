@@ -46,10 +46,15 @@ export async function createSync(): Promise<string> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error('Failed to create sync');
-  const location = res.headers.get('Location') || '';
-  const id = location.split('/').pop() || '';
-  if (!id) throw new Error('No sync ID returned');
+  if (!res.ok) throw new Error(`Failed to create sync (${res.status})`);
+
+  // Try multiple ways to get the blob ID
+  const id =
+    res.headers.get('X-jsonblob-id') ||
+    res.headers.get('Location')?.split('/').pop() ||
+    '';
+
+  if (!id) throw new Error('No sync ID returned — try again');
   setSyncId(id);
   return id;
 }
@@ -76,7 +81,14 @@ export async function pushSync(): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error('Failed to push sync');
+  if (!res.ok) {
+    // If blob was deleted/expired, clear the stale sync ID
+    if (res.status === 404) {
+      clearSyncId();
+      throw new Error('Sync expired — please create a new sync code');
+    }
+    throw new Error(`Failed to push sync (${res.status})`);
+  }
 }
 
 /** Pull cloud data and apply locally */
@@ -86,7 +98,12 @@ export async function pullSync(): Promise<SyncPayload | null> {
   const res = await fetch(`${API}/${id}`, {
     headers: { 'Accept': 'application/json' },
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    if (res.status === 404) {
+      clearSyncId();
+    }
+    return null;
+  }
   const data: SyncPayload = await res.json();
   return data;
 }
