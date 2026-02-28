@@ -1,0 +1,92 @@
+const API = 'https://jsonblob.com/api/jsonBlob';
+
+export interface SyncPayload {
+  collection: Record<string, unknown>;
+  sales: unknown[];
+  purchaseLots: unknown[];
+  lastModified: string;
+}
+
+function getSyncId(): string | null {
+  return localStorage.getItem('sync-id');
+}
+
+function setSyncId(id: string) {
+  localStorage.setItem('sync-id', id);
+}
+
+export function clearSyncId() {
+  localStorage.removeItem('sync-id');
+}
+
+export function getStoredSyncId(): string | null {
+  return getSyncId();
+}
+
+function buildPayload(): SyncPayload {
+  return {
+    collection: JSON.parse(localStorage.getItem('collection') || '{}'),
+    sales: JSON.parse(localStorage.getItem('sales') || '[]'),
+    purchaseLots: JSON.parse(localStorage.getItem('purchase-lots') || '[]'),
+    lastModified: new Date().toISOString(),
+  };
+}
+
+function applyPayload(data: SyncPayload) {
+  if (data.collection) localStorage.setItem('collection', JSON.stringify(data.collection));
+  if (data.sales) localStorage.setItem('sales', JSON.stringify(data.sales));
+  if (data.purchaseLots) localStorage.setItem('purchase-lots', JSON.stringify(data.purchaseLots));
+}
+
+/** Create a new sync blob and return its ID */
+export async function createSync(): Promise<string> {
+  const payload = buildPayload();
+  const res = await fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error('Failed to create sync');
+  const location = res.headers.get('Location') || '';
+  const id = location.split('/').pop() || '';
+  if (!id) throw new Error('No sync ID returned');
+  setSyncId(id);
+  return id;
+}
+
+/** Connect to an existing sync blob */
+export async function joinSync(id: string): Promise<SyncPayload> {
+  const res = await fetch(`${API}/${id}`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) throw new Error('Sync code not found. Check the code and try again.');
+  const data: SyncPayload = await res.json();
+  applyPayload(data);
+  setSyncId(id);
+  return data;
+}
+
+/** Push local data to the cloud */
+export async function pushSync(): Promise<void> {
+  const id = getSyncId();
+  if (!id) return;
+  const payload = buildPayload();
+  const res = await fetch(`${API}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error('Failed to push sync');
+}
+
+/** Pull cloud data and apply locally */
+export async function pullSync(): Promise<SyncPayload | null> {
+  const id = getSyncId();
+  if (!id) return null;
+  const res = await fetch(`${API}/${id}`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) return null;
+  const data: SyncPayload = await res.json();
+  return data;
+}
