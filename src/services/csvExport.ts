@@ -13,7 +13,9 @@ export function buildWhatnotRows(
   forSaleEntries: Array<{ entry: CollectionEntry; minifig: CatalogMinifig }>,
   settings: ExportSettings
 ): WhatnotCSVRow[] {
-  return forSaleEntries.map(({ entry, minifig }) => {
+  const rows: WhatnotCSVRow[] = [];
+
+  for (const { entry, minifig } of forSaleEntries) {
     const description = settings.descriptionTemplate
       .replace('{name}', minifig.name)
       .replace('{id}', minifig.id)
@@ -37,26 +39,77 @@ export function buildWhatnotRows(
 
     // Photo URLs: main image + up to 4 additional from photoUrls
     const photos = entry.photoUrls ?? [];
+    const condition = conditionMap[entry.condition] || settings.defaultCondition;
+    const mainPhoto = entry.customImageUrl || minifig.imageUrl;
 
-    return {
-      Title: `LEGO Star Wars Minifigure - ${minifig.name}`,
-      Description: description,
-      SKU: entry.sku || minifig.id,
-      Quantity: String(entry.quantity),
-      Price: String(price),
-      'Shipping Price': settings.shippingPrice || '0',
-      Category: 'Toys & Hobbies',
-      'Sub Category': 'LEGO',
-      Condition: conditionMap[entry.condition] || settings.defaultCondition,
-      Shipping: '1-3 oz',
-      Hazmat: 'Not Hazmat',
-      'Photo 1 URL': entry.customImageUrl || minifig.imageUrl,
-      'Photo 2 URL': photos[0] ?? '',
-      'Photo 3 URL': photos[1] ?? '',
-      'Photo 4 URL': photos[2] ?? '',
-      'Photo 5 URL': photos[3] ?? '',
-    };
-  });
+    const cracked = entry.crackedQuantity ?? 0;
+    const totalQty = entry.quantity;
+    const normalQty = totalQty - cracked;
+
+    if (cracked > 0 && normalQty > 0) {
+      // Split into two rows: normal copies and cracked copies
+      rows.push({
+        Title: `LEGO Star Wars Minifigure - ${minifig.name}`,
+        Description: description,
+        SKU: entry.sku || minifig.id,
+        Quantity: String(normalQty),
+        Price: String(price),
+        'Shipping Price': settings.shippingPrice || '0',
+        Category: 'Toys & Hobbies',
+        'Sub Category': 'LEGO',
+        Condition: condition,
+        Shipping: '1-3 oz',
+        Hazmat: 'Not Hazmat',
+        'Photo 1 URL': mainPhoto,
+        'Photo 2 URL': photos[0] ?? '',
+        'Photo 3 URL': photos[1] ?? '',
+        'Photo 4 URL': photos[2] ?? '',
+        'Photo 5 URL': photos[3] ?? '',
+      });
+      rows.push({
+        Title: `LEGO Star Wars Minifigure - ${minifig.name} (Cracked)`,
+        Description: description,
+        SKU: (entry.sku || minifig.id) + '-CRACKED',
+        Quantity: String(cracked),
+        Price: String(price),
+        'Shipping Price': settings.shippingPrice || '0',
+        Category: 'Toys & Hobbies',
+        'Sub Category': 'LEGO',
+        Condition: 'Used',
+        Shipping: '1-3 oz',
+        Hazmat: 'Not Hazmat',
+        'Photo 1 URL': mainPhoto,
+        'Photo 2 URL': photos[0] ?? '',
+        'Photo 3 URL': photos[1] ?? '',
+        'Photo 4 URL': photos[2] ?? '',
+        'Photo 5 URL': photos[3] ?? '',
+      });
+    } else {
+      // All same — single row (append "(Cracked)" if all are cracked)
+      const titleSuffix = cracked > 0 && cracked === totalQty ? ' (Cracked)' : '';
+      const skuSuffix = cracked > 0 && cracked === totalQty ? '-CRACKED' : '';
+      rows.push({
+        Title: `LEGO Star Wars Minifigure - ${minifig.name}${titleSuffix}`,
+        Description: description,
+        SKU: (entry.sku || minifig.id) + skuSuffix,
+        Quantity: String(totalQty),
+        Price: String(price),
+        'Shipping Price': settings.shippingPrice || '0',
+        Category: 'Toys & Hobbies',
+        'Sub Category': 'LEGO',
+        Condition: cracked > 0 ? 'Used' : condition,
+        Shipping: '1-3 oz',
+        Hazmat: 'Not Hazmat',
+        'Photo 1 URL': mainPhoto,
+        'Photo 2 URL': photos[0] ?? '',
+        'Photo 3 URL': photos[1] ?? '',
+        'Photo 4 URL': photos[2] ?? '',
+        'Photo 5 URL': photos[3] ?? '',
+      });
+    }
+  }
+
+  return rows;
 }
 
 export function generateCSV(rows: WhatnotCSVRow[]): string {

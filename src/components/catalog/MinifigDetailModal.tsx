@@ -7,7 +7,7 @@ import { Button } from '../ui/Button';
 import { StatusSelector } from '../collection/StatusSelector';
 import { PhotoManager } from '../export/PhotoManager';
 import { ProfitCalculator } from '../sales/ProfitCalculator';
-import { Package, TrendingUp } from 'lucide-react';
+import { Package, TrendingUp, Plus } from 'lucide-react';
 import { getPrice, getMarketPrice, getBricklinkId } from '../../services/priceService';
 import { useSales } from '../../hooks/useSales';
 
@@ -112,6 +112,19 @@ export function MinifigDetailModal({
 
           {entry && (
             <>
+              {/* Quick add more button */}
+              <button
+                onClick={() => {
+                  const newQty = entry.quantity + 1;
+                  const newForSale = (entry.forSaleQuantity ?? 0) + 1;
+                  onUpdateEntry(minifig.id, { quantity: newQty, forSaleQuantity: newForSale });
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-sw-gold/10 border border-sw-gold/30 text-sw-gold font-semibold hover:bg-sw-gold/20 transition-colors cursor-pointer"
+              >
+                <Plus size={18} />
+                Add Another Copy (Currently: {entry.quantity})
+              </button>
+
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   label="Total Quantity"
@@ -146,6 +159,16 @@ export function MinifigDetailModal({
                     })}
                   />
                 )}
+                <Input
+                  label="Cracked Qty"
+                  type="number"
+                  min={0}
+                  max={entry.quantity}
+                  value={entry.crackedQuantity ?? 0}
+                  onChange={e => onUpdateEntry(minifig.id, {
+                    crackedQuantity: Math.max(0, Math.min(entry.quantity, Number(e.target.value))),
+                  })}
+                />
                 <Input
                   label="Price Paid ($)"
                   type="number"

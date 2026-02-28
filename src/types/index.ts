@@ -31,6 +31,7 @@ export interface CollectionEntry {
   photoUrls?: string[];
   wantPriority?: WantPriority;
   targetPrice?: number | null;
+  crackedQuantity?: number;
 }
 
 export interface WhatnotCSVRow {
