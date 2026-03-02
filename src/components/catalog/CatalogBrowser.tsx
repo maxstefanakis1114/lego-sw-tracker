@@ -12,7 +12,7 @@ import { Pagination } from '../ui/Pagination';
 interface CatalogBrowserProps {
   collection: Record<string, CollectionEntry>;
   onStatusChange: (minifigId: string, status: ItemStatus) => void;
-  onAddWithQuantity: (minifigId: string, quantity: number, condition: ItemCondition, pricePaid: number | null) => void;
+  onAddWithQuantity: (minifigId: string, quantity: number, forSaleQuantity: number, condition: ItemCondition, pricePaid: number | null) => void;
   onUpdateEntry: (minifigId: string, updates: Partial<CollectionEntry>) => void;
   onRemove: (minifigId: string) => void;
 }

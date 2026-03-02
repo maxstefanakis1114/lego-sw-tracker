@@ -1,3 +1,5 @@
+import { loadFromStorage, saveToStorage } from './storage';
+
 const API = 'https://jsonblob.com/api/jsonBlob';
 
 export interface SyncPayload {
@@ -25,17 +27,17 @@ export function getStoredSyncId(): string | null {
 
 function buildPayload(): SyncPayload {
   return {
-    collection: JSON.parse(localStorage.getItem('collection') || '{}'),
-    sales: JSON.parse(localStorage.getItem('sales') || '[]'),
-    purchaseLots: JSON.parse(localStorage.getItem('purchase-lots') || '[]'),
+    collection: loadFromStorage<Record<string, unknown>>('collection', {}),
+    sales: loadFromStorage<unknown[]>('sales', []),
+    purchaseLots: loadFromStorage<unknown[]>('purchase-lots', []),
     lastModified: new Date().toISOString(),
   };
 }
 
 function applyPayload(data: SyncPayload) {
-  if (data.collection) localStorage.setItem('collection', JSON.stringify(data.collection));
-  if (data.sales) localStorage.setItem('sales', JSON.stringify(data.sales));
-  if (data.purchaseLots) localStorage.setItem('purchase-lots', JSON.stringify(data.purchaseLots));
+  if (data.collection) saveToStorage('collection', data.collection);
+  if (data.sales) saveToStorage('sales', data.sales);
+  if (data.purchaseLots) saveToStorage('purchase-lots', data.purchaseLots);
 }
 
 /** Create a new sync blob and return its ID */

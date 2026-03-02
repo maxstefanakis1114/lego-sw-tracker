@@ -35,9 +35,9 @@ export function useCollection() {
     });
   }, [setCollection]);
 
-  const addWithQuantity = useCallback((minifigId: string, totalQty: number, condition: ItemCondition, pricePaid: number | null) => {
+  const addWithQuantity = useCallback((minifigId: string, totalQty: number, forSaleQty: number, condition: ItemCondition, pricePaid: number | null) => {
     const now = new Date().toISOString();
-    const forSaleQty = Math.max(0, totalQty - 1);
+    const clampedForSale = Math.max(0, Math.min(forSaleQty, totalQty - 1));
     setCollection(prev => {
       const existing = prev[minifigId];
       if (existing) {
@@ -47,7 +47,7 @@ export function useCollection() {
             ...existing,
             status: 'owned',
             quantity: totalQty,
-            forSaleQuantity: forSaleQty,
+            forSaleQuantity: clampedForSale,
             condition,
             pricePaid,
             dateModified: now,
@@ -60,7 +60,7 @@ export function useCollection() {
           minifigId,
           status: 'owned',
           quantity: totalQty,
-          forSaleQuantity: forSaleQty,
+          forSaleQuantity: clampedForSale,
           condition,
           pricePaid,
           priceSold: null,
