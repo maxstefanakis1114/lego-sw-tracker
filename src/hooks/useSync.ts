@@ -7,6 +7,7 @@ import {
   pullSync,
   clearSyncId,
 } from '../services/syncService';
+import { saveToStorage } from '../services/storage';
 
 export function useSync(onRemoteUpdate: () => void) {
   const [syncId, setSyncId] = useState<string | null>(getStoredSyncId);
@@ -24,9 +25,9 @@ export function useSync(onRemoteUpdate: () => void) {
           setLastSynced(data.lastModified);
           const localMod = localStorage.getItem('sync-last-push') || '';
           if (data.lastModified > localMod) {
-            if (data.collection) localStorage.setItem('collection', JSON.stringify(data.collection));
-            if (data.sales) localStorage.setItem('sales', JSON.stringify(data.sales));
-            if (data.purchaseLots) localStorage.setItem('purchase-lots', JSON.stringify(data.purchaseLots));
+            if (data.collection) saveToStorage('collection', data.collection);
+            if (data.sales) saveToStorage('sales', data.sales);
+            if (data.purchaseLots) saveToStorage('purchase-lots', data.purchaseLots);
             onRemoteUpdate();
           }
         }
@@ -97,9 +98,9 @@ export function useSync(onRemoteUpdate: () => void) {
       if (remote) {
         const localMod = localStorage.getItem('sync-last-push') || '';
         if (remote.lastModified > localMod) {
-          if (remote.collection) localStorage.setItem('collection', JSON.stringify(remote.collection));
-          if (remote.sales) localStorage.setItem('sales', JSON.stringify(remote.sales));
-          if (remote.purchaseLots) localStorage.setItem('purchase-lots', JSON.stringify(remote.purchaseLots));
+          if (remote.collection) saveToStorage('collection', remote.collection);
+          if (remote.sales) saveToStorage('sales', remote.sales);
+          if (remote.purchaseLots) saveToStorage('purchase-lots', remote.purchaseLots);
           onRemoteUpdate();
         }
       }
